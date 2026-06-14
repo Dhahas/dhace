@@ -1,6 +1,6 @@
 # Zig + zgui GUI Application Architecture Template
 
-This repository implements a clean, production-ready project architecture for building GUI applications in Zig (0.13.0+) using `zgui` (Dear ImGui bindings).
+This repository implements a clean, production-ready project architecture for building GUI applications in Zig (0.16.0) using `zgui` (Dear ImGui bindings).
 
 ## 📁 Project Structure
 
@@ -33,13 +33,9 @@ dhace/
 
 ## 🛠️ Prerequisites
 
-Before building this project, you need the following installed:
-1. **Zig Compiler (0.13.0+)**
-2. **GLFW 3**:
-   - On Windows: Download the GLFW 64-bit Windows pre-compiled binaries and ensure `glfw3.lib` is on your path.
-   - On Ubuntu/Debian: `sudo apt install libglfw3-dev`
-   - On macOS: `brew install glfw`
-3. **OpenGL Loader**: This project assumes `glad/glad.h` is configured. You can drop glad source files or your preferred loader in the project.
+This project is 100% self-contained and builds its C dependencies (GLFW and OpenGL loaders) from source via Zig's package manager (`zglfw` and `zopengl`).
+Before building this project, you only need the following installed:
+1. **Zig Compiler (0.16.0)**: Ensure you are using the nightly build.
 
 ---
 

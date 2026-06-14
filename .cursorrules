@@ -22,7 +22,7 @@ This file contains rules, standards, and guidelines for AI models, agents, and d
 ## 2. Memory Management Standards
 
 Zig does not have garbage collection. AI agents must follow these rules strictly:
-- **General Purpose Allocator (GPA)**: Used in `src/main.zig` to initialize the root application state and detect leaks on exit.
+- **C Allocator (`std.heap.c_allocator`)**: Used in `src/main.zig` to initialize the root application state, taking advantage of `libc` linked via `zglfw`.
 - **Arena Allocators**: Use `std.heap.ArenaAllocator` for temporary, batch, or view-specific operations (e.g. settings panels, large string formatting operations, network payload parsing). When the view or operation closes, free the entire Arena.
 - **Defer Cleanup**: Every allocator, handle, or window creation MUST be immediately followed by a `defer` statement for cleanup (e.g., `defer allocator.free(slice);`).
 - **No Hidden Allocations**: Any function that allocates memory must accept an `allocator: std.mem.Allocator` as its first or second parameter, and its name must reflect that it allocates (or it must return an error union).
@@ -44,7 +44,7 @@ Zig does not have garbage collection. AI agents must follow these rules strictly
 ## 4. Dear ImGui (`zgui`) Integration Best Practices
 
 - **Zero Global UI Handles**: Never store ImGui component pointer references globally. Draw UI dynamically every frame using the `App` model state.
-- **Theme and Styling**: Wrap custom style modifications (like colors or padding) using push/pop pairs (e.g., `zgui.pushStyleColor4(...)` paired with `defer zgui.popStyleColor(...)`) to ensure style states do not leak into other widgets.
+- **Theme and Styling**: Wrap custom style modifications (like colors or padding) using push/pop pairs (e.g., `zgui.pushStyleColor4f(...)` paired with `defer zgui.popStyleColor(...)`) to ensure style states do not leak into other widgets.
 - **Zgui Signatures**:
   - Interactive controls like buttons return `bool`: `if (zgui.button("Label", .{})) { ... }`
   - Text input and checkboxes require pointers to values: `_ = zgui.checkbox("Label", .{ .v = &state });`
