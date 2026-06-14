@@ -52,6 +52,13 @@ pub fn build(b: *std.Build) void {
     const zopengl_dep = b.dependency("zopengl", .{});
     exe.root_module.addImport("zopengl", zopengl_dep.module("root"));
 
+    // Add nfd dependency
+    const nfd = b.dependency("nfd", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    exe.root_module.addImport("nfd", nfd.module("nfd"));
+
     // Install build artifacts
     b.installArtifact(exe);
 
@@ -71,6 +78,8 @@ pub fn build(b: *std.Build) void {
             .link_libc = true,
         }),
     });
+    exe_unit_tests.root_module.addImport("nfd", nfd.module("nfd"));
+    
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_exe_unit_tests.step);

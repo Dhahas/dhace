@@ -16,6 +16,10 @@
             .url = "https://github.com/zig-gamedev/zopengl/archive/refs/heads/main.tar.gz",
             .hash = "zopengl-0.6.0-dev-5-tnz32mDgB82moljuLD0fmbj1mU3NSCXjzttpmoV2iP",
         },
+        .nfd = .{
+            .url = "git+https://github.com/fabioarnold/nfd-zig.git#031b6b08c28b4c209fde1d7cfc2387aa956febb2",
+            .hash = "nfd-0.1.0-y82kbsSLBgBgSEauGFsHxH7RmcL4AEOqZEqOvA8-NEFq",
+        },
     },
     .paths = .{
         "build.zig",

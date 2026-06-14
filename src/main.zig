@@ -7,6 +7,11 @@ const zopengl = @import("zopengl");
 const App = @import("app.zig").App;
 const main_window = @import("view/main_window.zig");
 
+// Reference core modules so their tests run
+comptime {
+    _ = @import("core/language_manager.zig");
+}
+
 // Load platform-specific utilities conditionally
 const platform = switch (builtin.os.tag) {
     .windows => @import("platform/win32.zig"),
@@ -57,6 +62,9 @@ pub fn main(init: std.process.Init) !void {
     const app = try App.init(allocator, init.io);
     defer app.deinit();
 
+    window.setUserPointer(app);
+    _ = window.setCharCallback(charCallback);
+
     // 5. Main Render/Event Loop
     while (!window.shouldClose()) {
         zglfw.pollEvents();
@@ -81,5 +89,14 @@ pub fn main(init: std.process.Init) !void {
         zgui.backend.draw();
 
         window.swapBuffers();
+    }
+}
+
+fn charCallback(window: *zglfw.Window, codepoint: u32) callconv(.c) void {
+    const app_ptr = window.getUserPointer(App);
+    if (app_ptr) |app| {
+        if (codepoint < 128) {
+            app.char_queue.append(app.allocator, @intCast(codepoint)) catch {};
+        }
     }
 }

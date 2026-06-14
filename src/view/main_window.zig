@@ -1,6 +1,8 @@
 const std = @import("std");
 const zgui = @import("zgui");
+const nfd = @import("nfd");
 const App = @import("../app.zig").App;
+const editor_canvas = @import("editor_canvas.zig");
 
 pub fn render(app: *App, w: f32, h: f32) void {
     // Menu bar height is typically around 25 pixels.
@@ -15,8 +17,16 @@ pub fn render(app: *App, w: f32, h: f32) void {
                 app.clearFile();
             }
             if (zgui.menuItem("Open...", .{})) {
-                app.show_open_dialog = true;
-                @memset(&app.open_dialog_path_buf, 0);
+                const filter = app.language_manager.getAllExtensionsFilter(app.allocator) catch null;
+                defer if (filter != null) app.allocator.free(filter.?);
+
+                if (nfd.openFileDialog(filter, null) catch null) |path| {
+                    defer nfd.freePath(path);
+
+                    // Path from nfd is a null-terminated C string, convert to zig slice
+                    const path_slice = std.mem.sliceTo(path, 0);
+                    app.openFile(path_slice) catch {};
+                }
             }
             if (zgui.menuItem("Save", .{ .enabled = app.file_path != null })) {
                 app.saveFile() catch {};
@@ -34,36 +44,6 @@ pub fn render(app: *App, w: f32, h: f32) void {
             zgui.endMenu();
         }
         zgui.endMainMenuBar();
-    }
-
-    // 2. Open File Modal Dialog
-    if (app.show_open_dialog) {
-        zgui.openPopup("Open File Dialog", .{});
-    }
-    zgui.setNextWindowSize(.{ .w = 400.0, .h = 150.0 });
-    if (zgui.beginPopupModal("Open File Dialog", .{})) {
-        zgui.text("Enter path to a .txt file:", .{});
-        zgui.spacing();
-
-        // Input text for path
-        _ = zgui.inputText("##path", .{ .buf = &app.open_dialog_path_buf });
-
-        zgui.spacing();
-        zgui.separator();
-        zgui.spacing();
-
-        if (zgui.button("Open", .{ .w = 80.0 })) {
-            const path = std.mem.sliceTo(&app.open_dialog_path_buf, 0);
-            app.openFile(path) catch {};
-            app.show_open_dialog = false;
-            zgui.closeCurrentPopup();
-        }
-        zgui.sameLine(.{});
-        if (zgui.button("Cancel", .{ .w = 80.0 })) {
-            app.show_open_dialog = false;
-            zgui.closeCurrentPopup();
-        }
-        zgui.endPopup();
     }
 
     // 3. About Modal Dialog
@@ -84,56 +64,14 @@ pub fn render(app: *App, w: f32, h: f32) void {
         zgui.endPopup();
     }
 
-    // 4. Editor Page Panel (Centered horizontally, fills height vertically)
-    var page_width: f32 = 800.0;
-    if (w < 840.0) {
-        page_width = w - 40.0;
-    }
+    // 4. Editor Page Panel (80% of width, centered, 100% of available height)
+    const page_width = w * 0.8;
     const page_x = (w - page_width) / 2.0;
     const page_y = menu_h;
     const page_height = h - menu_h - bottom_h;
 
     zgui.setNextWindowPos(.{ .x = page_x, .y = page_y });
-    zgui.setNextWindowSize(.{ .w = page_width, .h = page_height });
-
-    // Push style to make it look like a clean white sheet of paper
-    zgui.pushStyleColor4f(.{ .idx = .window_bg, .c = .{ 1.0, 1.0, 1.0, 1.0 } }); // white background
-    zgui.pushStyleColor4f(.{ .idx = .border, .c = .{ 0.85, 0.85, 0.88, 1.0 } }); // soft border
-    zgui.pushStyleVar2f(.{ .idx = .window_padding, .v = .{ 20.0, 20.0 } });
-    zgui.pushStyleVar1f(.{ .idx = .window_border_size, .v = 1.0 });
-
-    if (zgui.begin("EditorPage", .{
-        .flags = .{
-            .no_title_bar = true,
-            .no_resize = true,
-            .no_move = true,
-            .no_collapse = true,
-            .no_scrollbar = true, // We want the text area scrollbar, not the window scrollbar
-            .no_background = false,
-        },
-    })) {
-        // Push colors to hide border of the input text and match white background
-        zgui.pushStyleColor4f(.{ .idx = .frame_bg, .c = .{ 1.0, 1.0, 1.0, 1.0 } });
-        zgui.pushStyleColor4f(.{ .idx = .frame_bg_hovered, .c = .{ 1.0, 1.0, 1.0, 1.0 } });
-        zgui.pushStyleColor4f(.{ .idx = .frame_bg_active, .c = .{ 1.0, 1.0, 1.0, 1.0 } });
-        zgui.pushStyleColor4f(.{ .idx = .text, .c = .{ 0.12, 0.12, 0.12, 1.0 } }); // dark text
-        zgui.pushStyleVar1f(.{ .idx = .frame_border_size, .v = 0.0 });
-        zgui.pushStyleVar2f(.{ .idx = .frame_padding, .v = .{ 0.0, 0.0 } });
-
-        _ = zgui.inputTextMultiline("##EditorInput", .{
-            .buf = app.editor_buf,
-            .w = -1.0,
-            .h = -1.0,
-            .flags = .{ .allow_tab_input = true },
-        });
-
-        zgui.popStyleVar(.{ .count = 2 });
-        zgui.popStyleColor(.{ .count = 4 });
-    }
-    zgui.end();
-
-    zgui.popStyleVar(.{ .count = 2 });
-    zgui.popStyleColor(.{ .count = 2 });
+    editor_canvas.renderEditorCanvas(app, page_width, page_height);
 
     // 5. Bottom Panel (Vim-like, 100% width)
     zgui.setNextWindowPos(.{ .x = 0.0, .y = h - bottom_h });
