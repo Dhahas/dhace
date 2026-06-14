@@ -1,0 +1,59 @@
+# AI and Agent Development Rules for Zig & zgui Project
+
+This file contains rules, standards, and guidelines for AI models, agents, and developers modifying or extending this codebase. Follow these rules strictly to maintain clean, reliable, and simple code.
+
+---
+
+## 1. Core Architecture Principles
+
+1. **Decoupled Business Logic (KISS & DRY)**:
+   - All core computation, algorithms, data formatting, and storage/networking logic must reside in `src/core/`.
+   - The core logic must have **zero** dependencies on GLFW, OpenGL, or `zgui`. It should be pure Zig that is fully testable via `zig test`.
+2. **Unidirectional Data Flow**:
+   - The `src/app.zig` file manages global application state (the **Model**).
+   - UI files in `src/view/` are the **View** and must only query and render the state from the `Model`.
+   - UI interactions trigger mutations by calling methods on `App`. Do not store persistent global state directly inside view files.
+3. **Platform Abstraction**:
+   - Do not write platform-specific code directly in the view or core logic.
+   - Use `src/platform/` with conditional imports based on `@import("builtin").os.tag` to implement OS-specific behavior.
+
+---
+
+## 2. Memory Management Standards
+
+Zig does not have garbage collection. AI agents must follow these rules strictly:
+- **General Purpose Allocator (GPA)**: Used in `src/main.zig` to initialize the root application state and detect leaks on exit.
+- **Arena Allocators**: Use `std.heap.ArenaAllocator` for temporary, batch, or view-specific operations (e.g. settings panels, large string formatting operations, network payload parsing). When the view or operation closes, free the entire Arena.
+- **Defer Cleanup**: Every allocator, handle, or window creation MUST be immediately followed by a `defer` statement for cleanup (e.g., `defer allocator.free(slice);`).
+- **No Hidden Allocations**: Any function that allocates memory must accept an `allocator: std.mem.Allocator` as its first or second parameter, and its name must reflect that it allocates (or it must return an error union).
+
+---
+
+## 3. Code Style & Syntax Guidelines (Zig 0.16+)
+
+- **Naming Conventions**:
+  - Functions, variables, and parameters: `camelCase`
+  - Types, Structs, Enums, Unions: `PascalCase`
+  - Constants: `snake_case` or `ALL_CAPS` depending on scope
+- **Error Handling**: Use explicit error handling. Avoid ignoring errors with `_ = functionWithErr();`. Use `try` or `catch` blocks.
+- **Formatting**: Always format code using `zig fmt <file>` after writing or modifying files.
+- **Comments**: Write concise, precise comments explaining *why* something is done, not *what* the code does, unless the code is solving a complex bitwise or low-level constraint.
+
+---
+
+## 4. Dear ImGui (`zgui`) Integration Best Practices
+
+- **Zero Global UI Handles**: Never store ImGui component pointer references globally. Draw UI dynamically every frame using the `App` model state.
+- **Theme and Styling**: Wrap custom style modifications (like colors or padding) using push/pop pairs (e.g., `zgui.pushStyleColor4(...)` paired with `defer zgui.popStyleColor(...)`) to ensure style states do not leak into other widgets.
+- **Zgui Signatures**:
+  - Interactive controls like buttons return `bool`: `if (zgui.button("Label", .{})) { ... }`
+  - Text input and checkboxes require pointers to values: `_ = zgui.checkbox("Label", .{ .v = &state });`
+
+---
+
+## 5. Verification Checklist for Agents
+
+Before completing any task, agents must run the following validation pipeline:
+1. **Code Format**: Run `zig fmt .` from the root directory to clean up whitespace.
+2. **Build Verification**: Run `zig build` to verify there are no compilation or linker errors.
+3. **Test Suite Verification**: Run `zig build test` to execute all unit tests.
