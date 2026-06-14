@@ -2,7 +2,7 @@
     .name = .dhace,
     .fingerprint = 0x6e1ff5d813a0bd31,
     .version = "0.1.0",
-    .minimum_zig_version = "0.13.0",
+    .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .zgui = .{
             .url = "https://github.com/zig-gamedev/zgui/archive/refs/heads/main.tar.gz",

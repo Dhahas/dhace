@@ -2,11 +2,10 @@ const std = @import("std");
 const builtin = @import("builtin");
 const zgui = @import("zgui");
 const zglfw = @import("zglfw");
+const zopengl = @import("zopengl");
 
 const App = @import("app.zig").App;
 const main_window = @import("view/main_window.zig");
-
-const zopengl = @import("zopengl");
 
 // Load platform-specific utilities conditionally
 const platform = switch (builtin.os.tag) {
@@ -14,9 +13,8 @@ const platform = switch (builtin.os.tag) {
     else => @import("platform/linux.zig"),
 };
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     // 1. Initialize Memory Allocator
-    // Since we compile GLFW from source and link libc, we can use the native C allocator directly.
     const allocator = std.heap.c_allocator;
 
     // 2. Initialize zglfw
@@ -32,7 +30,7 @@ pub fn main() !void {
     }
 
     // Create Main Window
-    const window = try zglfw.Window.create(1280, 720, "Zig + zgui Application", null, null);
+    const window = try zglfw.Window.create(1280, 720, "dhace", null, null);
     defer window.destroy();
 
     zglfw.makeContextCurrent(window);
@@ -49,12 +47,15 @@ pub fn main() !void {
     zgui.backend.init(window);
     defer zgui.backend.deinit();
 
-    // 4. Initialize Core Application State (The Model)
-    const app = try App.init(allocator);
-    defer app.deinit();
+    // Load custom high-resolution modern font
+    _ = zgui.io.addFontFromFile("assets/JetBrainsMono-Regular.ttf", 18.0);
 
-    // Trigger platform-specific window start alert
-    platform.showAlert("System Startup", "Zig + zgui application started successfully.");
+    // Switch to ImGui light mode globally
+    zgui.styleColorsLight(zgui.getStyle());
+
+    // 4. Initialize Core Application State (The Model)
+    const app = try App.init(allocator, init.io);
+    defer app.deinit();
 
     // 5. Main Render/Event Loop
     while (!window.shouldClose()) {
@@ -69,11 +70,11 @@ pub fn main() !void {
         zgui.backend.newFrame(@intCast(w), @intCast(h));
 
         // Render main view
-        main_window.render(app);
+        main_window.render(app, @floatFromInt(w), @floatFromInt(h));
 
         // Clear display buffer
         zopengl.bindings.viewport(0, 0, w, h);
-        zopengl.bindings.clearColor(0.09, 0.09, 0.1, 1.0); // Modern sleek dark-mode background
+        zopengl.bindings.clearColor(0.90, 0.90, 0.92, 1.0); // Modern premium light-gray background
         zopengl.bindings.clear(zopengl.bindings.COLOR_BUFFER_BIT);
 
         // Render ImGui draw lists to the screen
